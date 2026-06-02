@@ -1,0 +1,44 @@
+name: Daily data refresh
+
+on:
+  schedule:
+    - cron: "0 8 * * *"   # 8:00 AM UTC every day
+  workflow_dispatch:       # allow manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch & geocode
+        env:
+          SMARTSHEET_TOKEN:    ${{ secrets.SMARTSHEET }}
+          SMARTSHEET_SHEET_ID: ${{ secrets.SMARTSHEET_SHEET_ID }}
+          # Folder-based survey discovery (preferred): add/remove sheets from
+          # the Smartsheet folder to control what appears on the web page.
+          SURVEY_FOLDER_ID:    ${{ secrets.SURVEY_FOLDER_ID }}
+          # Legacy fallback: comma-separated sheet IDs (used if SURVEY_FOLDER_ID not set)
+          SURVEY_SHEET_ID:     ${{ secrets.SURVEY_FOLDER_ID }}
+        run: python fetch_and_geocode.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/properties.json docs/surveys.json geocode_cache.json
+          git diff --cached --quiet || git commit -m "chore: daily data refresh $(date -u +'%Y-%m-%d')"
+          git push

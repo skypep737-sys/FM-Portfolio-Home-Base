@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Salvation Army — Property Map</title>
+
+  <link rel="stylesheet" href="leaflet.css" />
+  <script src="leaflet.js"></script>
+  <!-- Client config — edit client.js to rebrand for a new client -->
+  <script src="client.js"></script>
+
+  <style>
+    /* ── Brand tokens ─────────────────────────────────────────────────────── */
+    :root {
+      --sa-red:      #EE2A24;
+      --sa-red-dim:  rgba(238,42,36,.15);
+      --sa-red-glow: rgba(238,42,36,.35);
+      --bg:          #060a14;
+      --sidebar-bg:  #0b1120;
+      --card-hover:  #101828;
+      --card-active: #1a0808;
+      --border:      #1a2d42;
+      --text:        #e2e8f0;
+      --muted:       #6b839a;
+      --dim:         #3a5266;
+      --header-h:    52px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%; width: 100%;
+      font-family: system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       HEADER
+    ══════════════════════════════════════════════════════════════════════════ */
+    #header {
+      height: var(--header-h); flex-shrink: 0;
+      background: var(--sidebar-bg);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 14px; gap: 10px;
+      z-index: 2000;
+    }
+
+    /* Brand mark in header */
+    .header-brand {
+      display: flex; align-items: center; gap: 8px;
+      margin-right: 6px;
+    }
+    .header-shield {
+      width: 26px; height: 26px;
+      background: var(--sa-red); border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 900; color: #fff;
+    }
+    .header-brand span {
+      font-size: .8rem; font-weight: 700; color: var(--text);
+      letter-spacing: .02em; white-space: nowrap;
+    }
+
+    .header-divider {
+      width: 1px; height: 28px; background: var(--border);
+      margin: 0 4px; flex-shrink: 0;
+    }
+
+    /* Square action buttons (left group) */
+    .action-btn {
+      width: 36px; height: 36px; flex-shrink: 0;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); transition: border-color .15s, color .15s, background .15s;
+      position: relative;
+    }
+    .action-btn:hover { border-color: var(--sa-red); color: var(--text); background: var(--card-hover); }
+    .action-btn:active { background: var(--card-active); }
+    .action-btn svg { width: 16px; height: 16px; }
+
+    /* Tooltip */
+    .action-btn::after {
+      content: attr(data-tip);
+      position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%);
+      background: #111; color: var(--text); font-size: .68rem;
+      padding: 3px 7px; border-radius: 4px; white-space: nowrap;
+      pointer-events: none; opacity: 0; transition: opacity .15s;
+      border: 1px solid var(--border);
+    }
+    .action-btn:hover::after { opacity: 1; }
+
+    /* Spinning state for refresh */
+    .action-btn.loading svg { animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast notification */
+    #toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--sidebar-bg); border: 1px solid var(--sa-red);
+      color: var(--text); padding: 8px 18px; border-radius: 8px;
+      font-size: .8rem; z-index: 9999;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    #toast.show { opacity: 1; }
+
+    /* Push nav to right */
+    .header-spacer { flex: 1; }
+
+    /* Nav buttons (page switcher) */
+    .nav-group { display: flex; gap: 6px; }
+
+    .nav-btn {
+      height: 36px; padding: 0 20px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 7px; cursor: pointer;
+      display: flex; align-items: center; gap: 7px;
+      color: var(--muted); font-size: .82rem; font-weight: 600;
+      transition: border-color .15s, color .15s, background .15s;
+      white-space: nowrap;
+    }
+    .nav-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .nav-btn:hover { border-color: var(--sa-red-glow); color: var(--text); }
+    .nav-btn.active {
+      background: var(--sa-red); border-color: var(--sa-red);
+      color: #fff;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       VIEWS CONTAINER
+    ══════════════════════════════════════════════════════════════════════════ */
+    #views { flex: 1; overflow: hidden; display: flex; }
+
+    .view { flex: 1; display: none; overflow: hidden; }
+    .view.active { display: flex; }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       MAP VIEW
+    ══════════════════════════════════════════════════════════════════════════ */
+    #view-map { flex-direction: row; }
+
+    /* Sidebar shell */
+    #sidebar {
+      width: 320px; min-width: 280px;
+      background: var(--sidebar-bg);
+      display: flex; flex-direction: column;
+      border-right: 1px solid var(--border);
+      z-index: 1000; overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Sidebar page system ────────────────────────────────────────────────── */
+    .sidebar-page {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      background: var(--sidebar-bg);
+      transition: transform .25s cubic-bezier(.4,0,.2,1), opacity .2s;
+    }
+    .sidebar-page.sp-hidden {
+      transform: translateX(100%); opacity: 0; pointer-events: none;
+    }
+    #sidebar-home.sp-hidden  { transform: translateX(-30%); }
+
+    /* ── Home page ─────────────────────────────────────────────────────────── */
+    .sidebar-home-hdr {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    #last-updated { font-size: .7rem; color: var(--muted); }
+
+    .sidebar-nav-cards { padding: 12px 10px 4px; flex-shrink: 0; }
+
+    .sidebar-nav-card {
+      width: 100%; margin-bottom: 8px;
+      padding: 15px 16px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 11px; cursor: pointer;
+      display: flex; align-items: center; gap: 14px;
+      color: var(--text); text-align: left;
+      transition: border-color .15s, background .15s, box-shadow .15s;
+    }
+    .sidebar-nav-card:hover {
+      border-color: var(--sa-red);
+      background: var(--card-hover);
+      box-shadow: 0 0 0 1px var(--sa-red-glow);
+    }
+    .sidebar-nav-icon {
+      width: 46px; height: 46px; flex-shrink: 0;
+      background: var(--sa-red-dim); border: 1px solid var(--sa-red-glow);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--sa-red);
+    }
+    .sidebar-nav-icon svg { width: 22px; height: 22px; }
+    .sidebar-nav-label h3 { font-size: .9rem; font-weight: 700; }
+    .sidebar-nav-label p  { font-size: .72rem; color: var(--muted); margin-top: 3px; }
+    .sidebar-nav-chevron  { margin-left: auto; color: var(--dim); font-size: 1.2rem; font-weight: 300; }
+
+    /* Active Deals card — orange accent */
+    .sidebar-nav-card.deals-card .sidebar-nav-icon {
+      background: rgba(249,115,22,.12); border-color: rgba(249,115,22,.35); color: #f97316;
+    }
+    .sidebar-nav-card.deals-card:hover { border-color: #f97316; box-shadow: 0 0 0 1px rgba(249,115,22,.3); }
+
+    /* Survey card — green accent */
+    .sidebar-nav-card.survey-nav-card .sidebar-nav-icon {
+      background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.35); color: #22c55e;
+    }
+    .sidebar-nav-card.survey-nav-card:hover { border-color: #22c55e; box-shadow: 0 0 0 1px rgba(34,197,94,.25); }
+
+    /* ── Sub-page header ───────────────────────────────────────────────────── */
+    .sidebar-subpage-hdr {
+      padding: 11px 16px 10px;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sidebar-subpage-hdr h3 { font-size: .88rem; font-weight: 700; }
+    .sidebar-subpage-hdr .hdr-count {
+      font-size: .7rem; padding: 2px 9px; border-radius: 999px;
+      background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+    }
+
+    /* ── Option cards (deal types / survey sheets) ─────────────────────────── */
+    .sidebar-options-scroll { flex: 1; overflow-y: auto; padding: 10px; }
+    .sidebar-options-scroll::-webkit-scrollbar { width: 5px; }
+    .sidebar-options-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .sidebar-option-card {
+      width: 100%; margin-bottom: 8px; padding: 13px 14px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 9px; cursor: pointer;
+      display: flex; align-items: center; gap: 12px;
+      color: var(--text); text-align: left;
+      transition: border-color .15s, background .15s, box-shadow .15s;
+    }
+    .sidebar-option-card:hover {
+      background: var(--card-hover);
+      border-color: var(--option-color, var(--sa-red));
+    }
+    .sidebar-option-card.active {
+      border-color: var(--option-color, var(--sa-red));
+      background: color-mix(in srgb, var(--option-color, var(--sa-red)) 10%, var(--bg));
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--option-color, var(--sa-red)) 30%, transparent);
+    }
+    .option-dot {
+      width: 38px; height: 38px; flex-shrink: 0; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      background: color-mix(in srgb, var(--option-color, var(--sa-red)) 15%, transparent);
+      border: 1px solid color-mix(in srgb, var(--option-color, var(--sa-red)) 35%, transparent);
+      color: var(--option-color, var(--sa-red));
+    }
+    .option-dot svg { width: 18px; height: 18px; }
+    .option-text { flex: 1; }
+    .option-label { font-size: .85rem; font-weight: 600; }
+    .option-sub   { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+    .option-check { color: var(--option-color, var(--sa-red)); font-size: .95rem; opacity: 0; transition: opacity .15s; }
+    .sidebar-option-card.active .option-check { opacity: 1; }
+
+    /* ── Portfolio sub-page ─────────────────────────────────────────────────── */
+    .sidebar-back-btn {
+      display: flex; align-items: center; gap: 7px;
+      background: none; border: none; border-bottom: 1px solid var(--border);
+      cursor: pointer; color: var(--muted); font-size: .78rem; font-weight: 600;
+      padding: 10px 14px; width: 100%; text-align: left;
+      transition: color .15s, background .15s; flex-shrink: 0;
+    }
+    .sidebar-back-btn:hover { color: var(--text); background: var(--card-hover); }
+    .sidebar-back-btn svg  { width: 14px; height: 14px; }
+
+    #portfolio-search {
+      padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    #search {
+      width: 100%; padding: 7px 10px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: .82rem; outline: none;
+      transition: border-color .15s;
+    }
+    #search:focus { border-color: var(--sa-red); }
+    #search::placeholder { color: var(--dim); }
+
+    #filters {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      padding: 10px 16px; border-bottom: 1px solid var(--border);
+    }
+    .chip {
+      padding: 3px 10px; border-radius: 999px; font-size: .72rem;
+      border: 1px solid var(--border); background: var(--bg); color: var(--muted);
+      cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+      white-space: nowrap;
+    }
+    .chip.active { border-color: var(--sa-red); background: var(--sa-red-dim); color: #ff8f8c; }
+    .chip:hover:not(.active) { border-color: var(--sa-red-glow); }
+    #survey-filter {
+      padding: 6px 16px 8px;
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-wrap: wrap; gap: 5px;
+    }
+    .survey-chip { border-color: #22c55e44; color: #22c55e99; }
+    .survey-chip.active { border-color: #22c55e; background: rgba(34,197,94,.15); color: #22c55e; }
+    .survey-chip:hover:not(.active) { border-color: #22c55e66; color: #22c55e; }
+
+    /* Survey group header inside sidebar list */
+    .survey-group-header {
+      padding: 6px 16px 2px;
+      font-size: .67rem; font-weight: 700; color: #22c55e;
+      text-transform: uppercase; letter-spacing: .09em;
+      margin-top: 2px;
+    }
+
+    /* Layer panel — survey row with expand arrow */
+    .layer-row {
+      display: flex; align-items: center;
+      justify-content: space-between;
+    }
+    .layer-expand-btn {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; padding: 2px 6px; font-size: .8rem;
+      border-radius: 4px; line-height: 1;
+      transition: color .15s, background .15s;
+    }
+    .layer-expand-btn:hover { color: var(--text); background: var(--card-hover); }
+    .layer-sub { display: none; padding: 2px 0 4px 20px; }
+    .layer-sub.expanded { display: block; }
+    .layer-sub-item {
+      display: flex; align-items: center; gap: 8px;
+      font-size: .76rem; padding: 3px 0; cursor: pointer; color: var(--muted);
+    }
+    .layer-sub-item.enabled { color: var(--text); }
+    .layer-sub-item input { accent-color: #22c55e; cursor: pointer; }
+
+    /* Survey Review page — tab buttons */
+    .survey-tabs {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      padding: 10px 24px 0; flex-shrink: 0;
+    }
+    .survey-tab {
+      height: 30px; padding: 0 14px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; cursor: pointer;
+      color: var(--muted); font-size: .78rem; font-weight: 600;
+      transition: border-color .15s, color .15s, background .15s;
+      white-space: nowrap;
+    }
+    .survey-tab:hover { border-color: #22c55e66; color: #22c55e; }
+    .survey-tab.active {
+      background: rgba(34,197,94,.12); border-color: #22c55e; color: #22c55e;
+    }
+
+    #property-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+    #property-list::-webkit-scrollbar { width: 5px; }
+    #property-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .prop-card {
+      padding: 10px 16px; cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background .1s, border-color .1s;
+    }
+    .prop-card:hover  { background: var(--card-hover); }
+    .prop-card.active { background: var(--card-active); border-left-color: var(--sa-red); }
+    .prop-name  { font-size: .85rem; font-weight: 500; }
+    .prop-meta  { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+    .prop-badge {
+      display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px;
+      font-size: .68rem; font-weight: 600; letter-spacing: .04em;
+    }
+
+    #count { padding: 6px 16px; font-size: .72rem; color: var(--dim); border-top: 1px solid var(--border); }
+
+    /* ── Survey sidebar section ──────────────────────────────────────────────── */
+    #survey-section {
+      display: none;
+      flex-direction: column;
+      border-bottom: 2px solid #22c55e33;
+      max-height: 260px;
+      flex-shrink: 0;
+    }
+    #survey-section.visible { display: flex; }
+
+    .survey-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 16px 4px; flex-shrink: 0;
+    }
+    .survey-section-header span:first-child {
+      font-size: .72rem; font-weight: 600; color: #22c55e;
+      text-transform: uppercase; letter-spacing: .08em;
+    }
+    #survey-count { font-size: .7rem; color: var(--dim); }
+
+    #survey-list { overflow-y: auto; flex: 1; }
+    #survey-list::-webkit-scrollbar { width: 5px; }
+    #survey-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .survey-card { padding: 8px 16px; cursor: pointer; border-left: 3px solid transparent; transition: background .1s, border-color .1s; }
+    .survey-card:hover  { background: var(--card-hover); }
+    .survey-card.active { background: #0a1a0a; border-left-color: #22c55e; }
+
+    .survey-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .7rem; font-weight: 700; flex-shrink: 0;
+      background: var(--bg);
+    }
+
+    /* Survey popup photo */
+    .survey-photo {
+      width: 100%; max-height: 130px; object-fit: cover;
+      border-radius: 5px; margin-bottom: 7px; display: block;
+    }
+    .survey-photo-link {
+      display: none; font-size: .75rem; color: var(--sa-red);
+      text-decoration: none; margin-bottom: 7px;
+    }
+    .popup-flyer-link {
+      display: inline-block; margin-top: 6px;
+      padding: 4px 12px; border-radius: 5px;
+      background: var(--sa-red-dim); color: var(--sa-red);
+      border: 1px solid var(--sa-red-glow);
+      font-size: .75rem; font-weight: 600; text-decoration: none;
+    }
+    .popup-flyer-link:hover { background: var(--sa-red); color: #fff; }
+
+    #layer-panel { padding: 10px 16px; border-top: 1px solid var(--border); }
+    #layer-panel h2 { font-size: .72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+    .layer-toggle { display: flex; align-items: center; gap: 8px; font-size: .8rem; padding: 4px 0; cursor: pointer; color: var(--muted); }
+    .layer-toggle input { accent-color: var(--sa-red); cursor: pointer; }
+    .layer-toggle.enabled { color: var(--text); }
+
+    #map { flex: 1; }
+
+    /* ── Zoom-responsive pin scaling ──────────────────────────────────────────
+       CSS transforms the divIcon container; transform-origin matches the anchor
+       so the pin tip stays planted on the correct map coordinate.              */
+    .prop-pin   { transition: transform .15s; transform-origin: bottom center; }
+    .survey-pin { transition: transform .15s; transform-origin: center center; }
+
+    #map.zoom-xs  .prop-pin   { transform: scale(.30); }
+    #map.zoom-sm  .prop-pin   { transform: scale(.50); }
+    #map.zoom-md  .prop-pin   { transform: scale(.70); }
+    #map.zoom-lg  .prop-pin   { transform: scale(.85); }
+    /* zoom-xl  — full size (no transform) */
+
+    #map.zoom-xs  .survey-pin { transform: scale(.28); }
+    #map.zoom-sm  .survey-pin { transform: scale(.48); }
+    #map.zoom-md  .survey-pin { transform: scale(.68); }
+    #map.zoom-lg  .survey-pin { transform: scale(.85); }
+
+    .leaflet-popup-content-wrapper {
+      background: var(--sidebar-bg); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.6);
+    }
+    .leaflet-popup-tip { background: var(--sidebar-bg); }
+    .popup-title { font-weight: 700; font-size: .9rem; margin-bottom: 6px; color: #fff; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .popup-row   { font-size: .78rem; color: var(--muted); margin-top: 4px; }
+    .popup-row span { color: var(--text); }
+
+    #statusbar {
+      position: fixed; bottom: 8px; right: 8px;
+      background: rgba(6,10,20,.88); backdrop-filter: blur(4px);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 4px 10px; font-size: .7rem; color: var(--muted);
+      z-index: 500; pointer-events: none;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       DEAL VIEW
+    ══════════════════════════════════════════════════════════════════════════ */
+    #view-deals {
+      flex-direction: column;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    .deals-header {
+      padding: 16px 24px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 16px; flex-shrink: 0;
+    }
+    .deals-header h2 { font-size: 1rem; font-weight: 700; }
+    .deals-header .deal-count {
+      font-size: .75rem; background: var(--sa-red-dim);
+      color: #ff8f8c; border: 1px solid var(--sa-red-glow);
+      border-radius: 999px; padding: 2px 10px;
+    }
+    .deals-search {
+      margin-left: auto;
+      padding: 6px 12px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--sidebar-bg);
+      color: var(--text); font-size: .82rem; outline: none; width: 220px;
+      transition: border-color .15s;
+    }
+    .deals-search:focus { border-color: var(--sa-red); }
+    .deals-search::placeholder { color: var(--dim); }
+
+    .deals-filter-row {
+      display: flex; gap: 8px; align-items: center;
+      padding: 8px 24px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .deal-chip {
+      padding: 3px 12px; border-radius: 999px; font-size: .75rem;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--muted); cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+      white-space: nowrap;
+    }
+    .deal-chip.active {
+      border-color: var(--chip-color, var(--sa-red));
+      background: color-mix(in srgb, var(--chip-color, var(--sa-red)) 15%, transparent);
+      color: var(--chip-color, var(--sa-red));
+    }
+    .deal-chip:hover:not(.active) {
+      border-color: var(--chip-color, var(--sa-red));
+      color: var(--chip-color, var(--sa-red));
+    }
+
+    .table-wrap {
+      flex: 1; overflow: auto;
+      padding: 0 24px 24px;
+    }
+    .table-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
+    .table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    table {
+      width: 100%; border-collapse: collapse;
+      font-size: .82rem; margin-top: 12px;
+    }
+    thead { position: sticky; top: 0; z-index: 10; }
+    th {
+      background: var(--sidebar-bg);
+      padding: 10px 14px; text-align: left;
+      font-size: .72rem; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer; user-select: none; white-space: nowrap;
+    }
+    th:hover { color: var(--text); }
+    th .sort-arrow { margin-left: 4px; opacity: .4; font-size: .65rem; }
+    th.sorted .sort-arrow { opacity: 1; color: var(--sa-red); }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      max-width: 260px;
+    }
+    td.notes-cell {
+      color: var(--muted); font-size: .76rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 240px;
+    }
+
+    tbody tr { transition: background .1s; cursor: default; }
+    tbody tr:hover td { background: var(--card-hover); }
+
+    .deal-badge {
+      display: inline-block; padding: 2px 9px; border-radius: 999px;
+      font-size: .7rem; font-weight: 600; white-space: nowrap;
+    }
+    .status-badge {
+      display: inline-block; padding: 2px 9px; border-radius: 999px;
+      font-size: .7rem; font-weight: 500; white-space: nowrap;
+      background: rgba(255,255,255,.05); color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .no-deals {
+      text-align: center; padding: 60px 0; color: var(--muted); font-size: .9rem;
+    }
+
+    /* Survey view */
+    #view-survey {
+      flex-direction: column;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    .survey-addr-link {
+      color: var(--sa-red); cursor: pointer; text-decoration: underline;
+      text-underline-offset: 2px; font-weight: 500;
+    }
+    .survey-addr-link:hover { color: #ff8f8c; }
+
+    .rank-badge {
+      display: inline-block; padding: 2px 9px; border-radius: 999px;
+      font-size: .7rem; font-weight: 600; white-space: nowrap;
+    }
+
+    /* ── Survey detail modal ─────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 9000;
+      background: rgba(0,0,0,.7); backdrop-filter: blur(3px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+    .modal-card {
+      background: var(--sidebar-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%; max-width: 500px;
+      max-height: 88vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.8);
+      transform: translateY(12px); transition: transform .2s;
+      position: relative;
+    }
+    .modal-overlay.open .modal-card { transform: translateY(0); }
+
+    .modal-close {
+      position: absolute; top: 12px; right: 14px;
+      background: none; border: none; color: var(--muted);
+      font-size: 1.3rem; cursor: pointer; line-height: 1;
+      transition: color .15s;
+    }
+    .modal-close:hover { color: var(--text); }
+
+    .modal-photo {
+      width: 100%; max-height: 220px; object-fit: cover;
+      border-radius: 12px 12px 0 0; display: block;
+    }
+    .modal-photo-placeholder { display: none; }
+
+    .modal-body { padding: 18px 20px 20px; }
+
+    .modal-title {
+      font-size: 1rem; font-weight: 700; color: #fff;
+      margin-bottom: 14px; padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-right: 24px; /* room for close btn */
+    }
+
+    .modal-field { margin-bottom: 10px; }
+    .modal-label {
+      font-size: .7rem; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+      margin-bottom: 2px;
+    }
+    .modal-value { font-size: .85rem; color: var(--text); }
+    .modal-value.notes { white-space: pre-wrap; line-height: 1.5; color: var(--muted); }
+
+    .modal-flyer-btn {
+      display: inline-block; margin-top: 14px;
+      padding: 8px 20px; border-radius: 7px;
+      background: var(--sa-red); color: #fff;
+      border: none; font-size: .82rem; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      transition: background .15s, transform .1s;
+    }
+    .modal-flyer-btn:hover { background: #c91f1a; transform: translateY(-1px); }
+    .modal-flyer-btn.disabled {
+      background: var(--border); color: var(--muted); pointer-events: none;
+    }
+  </style>
+
+  <!-- Apply client branding: CSS variables + page title -->
+  <script>
+    (function () {
+      var cfg = CLIENT_CONFIG;
+      var hex = cfg.primaryColor;
+      var r = parseInt(hex.slice(1,3),16);
+      var g = parseInt(hex.slice(3,5),16);
+      var b = parseInt(hex.slice(5,7),16);
+      var root = document.documentElement;
+      root.style.setProperty("--sa-red",      hex);
+      root.style.setProperty("--sa-red-dim",  "rgba("+r+","+g+","+b+",.15)");
+      root.style.setProperty("--sa-red-glow", "rgba("+r+","+g+","+b+",.35)");
+      document.title = cfg.pageTitle;
+    })();
+  </script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="header">
+
+  <!-- Brand (text set from client.js) -->
+  <div class="header-brand">
+    <div class="header-shield" id="brand-letter"></div>
+    <span id="brand-name"></span>
+  </div>
+
+  <div class="header-divider"></div>
+
+  <!-- Action buttons (square) -->
+  <button class="action-btn" id="btn-refresh" data-tip="Refresh Data">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+      <path d="M3.51 9a9 9 0 0 1 14.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0 0 20.49 15"/>
+    </svg>
+  </button>
+
+  <button class="action-btn" id="btn-export" data-tip="Export CSV">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  </button>
+
+  <button class="action-btn" id="btn-share" data-tip="Copy Share Link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+    </svg>
+  </button>
+
+  <div class="header-spacer"></div>
+
+  <!-- Page nav buttons -->
+  <div class="nav-group">
+    <button class="nav-btn active" data-view="map">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+        <line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
+      </svg>
+      Map View
+    </button>
+    <button class="nav-btn" data-view="deals">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>
+      </svg>
+      Deal View
+    </button>
+    <button class="nav-btn" data-view="survey">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+      </svg>
+      Survey Review
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     VIEWS
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="views">
+
+  <!-- MAP VIEW -->
+  <div id="view-map" class="view active">
+    <div id="sidebar">
+
+      <!-- ══ HOME PAGE ══════════════════════════════════════════════════════ -->
+      <div id="sidebar-home" class="sidebar-page">
+        <div class="sidebar-home-hdr">
+          <p id="last-updated">Loading…</p>
+        </div>
+
+        <div class="sidebar-nav-cards">
+          <!-- Portfolio -->
+          <button class="sidebar-nav-card" id="nav-portfolio">
+            <div class="sidebar-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </div>
+            <div class="sidebar-nav-label">
+              <h3>Portfolio</h3>
+              <p id="portfolio-count">Loading…</p>
+            </div>
+            <span class="sidebar-nav-chevron">›</span>
+          </button>
+
+          <!-- Active Deals -->
+          <button class="sidebar-nav-card deals-card" id="nav-deals-sidebar">
+            <div class="sidebar-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2"/>
+                <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+                <line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
+              </svg>
+            </div>
+            <div class="sidebar-nav-label">
+              <h3>Active Deals</h3>
+              <p id="deals-nav-count">Loading…</p>
+            </div>
+            <span class="sidebar-nav-chevron">›</span>
+          </button>
+
+          <!-- Survey -->
+          <button class="sidebar-nav-card survey-nav-card" id="nav-survey-sidebar">
+            <div class="sidebar-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+              </svg>
+            </div>
+            <div class="sidebar-nav-label">
+              <h3>Survey Sites</h3>
+              <p id="survey-nav-count">Loading…</p>
+            </div>
+            <span class="sidebar-nav-chevron">›</span>
+          </button>
+        </div>
+
+        <div style="flex:1"></div>
+
+        <!-- Layer panel lives on Home so it's always reachable -->
+        <div id="layer-panel">
+          <h2>Layers</h2>
+          <label class="layer-toggle enabled">
+            <input type="checkbox" checked data-layer="properties" /> Properties
+          </label>
+          <div class="layer-row">
+            <label class="layer-toggle" id="survey-master-toggle">
+              <input type="checkbox" data-layer="surveys" /> Survey Sites
+            </label>
+            <button class="layer-expand-btn" id="survey-expand-btn" title="Show individual surveys">▸</button>
+          </div>
+          <div class="layer-sub" id="survey-sub-options"></div>
+          <label class="layer-toggle enabled">
+            <input type="checkbox" checked data-layer="roads" /> Roads &amp; Highways
+          </label>
+          <label class="layer-toggle enabled">
+            <input type="checkbox" checked data-layer="boundaries" /> Boundaries &amp; Cities
+          </label>
+        </div>
+      </div>
+
+      <!-- ══ PORTFOLIO PAGE ═════════════════════════════════════════════════ -->
+      <div id="sidebar-portfolio" class="sidebar-page sp-hidden">
+        <button class="sidebar-back-btn" id="sidebar-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Home
+        </button>
+
+        <div id="portfolio-search">
+          <input id="search" type="text" placeholder="Search name, address, deal type…" />
+        </div>
+
+        <div id="filters">
+          <div class="chip active" data-type="all">All</div>
+        </div>
+
+        <!-- Per-sheet survey chips -->
+        <div id="survey-filter"></div>
+
+        <!-- Survey sites list -->
+        <div id="survey-section">
+          <div class="survey-section-header">
+            <span>&#9679; Survey Sites</span>
+            <span id="survey-count"></span>
+          </div>
+          <div id="survey-list"></div>
+        </div>
+
+        <div id="property-list"></div>
+        <div id="count"></div>
+      </div>
+
+      <!-- ══ ACTIVE DEALS PAGE ═════════════════════════════════════════════ -->
+      <div id="sidebar-deals-nav" class="sidebar-page sp-hidden">
+        <button class="sidebar-back-btn" id="sidebar-deals-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Home
+        </button>
+        <div class="sidebar-subpage-hdr">
+          <h3>Active Deals</h3>
+          <span class="hdr-count" id="deals-nav-total">—</span>
+        </div>
+        <div class="sidebar-options-scroll" id="deals-options"></div>
+      </div>
+
+      <!-- ══ SURVEY NAV PAGE ═══════════════════════════════════════════════ -->
+      <div id="sidebar-survey-nav" class="sidebar-page sp-hidden">
+        <button class="sidebar-back-btn" id="sidebar-survey-nav-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Home
+        </button>
+        <div class="sidebar-subpage-hdr">
+          <h3>Survey Sites</h3>
+          <span class="hdr-count" id="survey-nav-total">—</span>
+        </div>
+        <div class="sidebar-options-scroll" id="survey-nav-options"></div>
+      </div>
+
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <!-- DEAL VIEW -->
+  <div id="view-deals" class="view">
+    <div class="deals-header">
+      <h2>Active Deals</h2>
+      <span class="deal-count" id="deal-count">— deals</span>
+      <input class="deals-search" id="deals-search" type="text" placeholder="Search deals…" />
+    </div>
+    <!-- Deal type filter chips — built dynamically from client.js dealTypes -->
+    <div class="deals-filter-row" id="deals-filters"></div>
+    <div class="table-wrap">
+      <table id="deals-table">
+        <thead>
+          <tr>
+            <th data-col="store_name">Store Name <span class="sort-arrow">↕</span></th>
+            <th data-col="full_address">Address <span class="sort-arrow">↕</span></th>
+            <th data-col="deal_type">Deal Type <span class="sort-arrow">↕</span></th>
+            <th data-col="deal_status">Deal Status <span class="sort-arrow">↕</span></th>
+            <th data-col="drumline">Lease Exp. <span class="sort-arrow">↕</span></th>
+            <th data-col="gross_sales_rank">End of Control <span class="sort-arrow">↕</span></th>
+            <th data-col="deal_notes">Latest Notes <span class="sort-arrow">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="deals-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SURVEY REVIEW VIEW -->
+  <div id="view-survey" class="view">
+    <div class="deals-header">
+      <h2>Survey Review</h2>
+      <span class="deal-count" id="survey-view-count">— sites</span>
+    </div>
+    <!-- One tab button per survey sheet — populated dynamically -->
+    <div class="survey-tabs" id="survey-tabs"></div>
+    <div class="table-wrap">
+      <table id="survey-review-table">
+        <thead>
+          <tr>
+            <th data-scol="survey_order"># <span class="sort-arrow">↕</span></th>
+            <th data-scol="street">Address <span class="sort-arrow">↕</span></th>
+            <th data-scol="submarket">Submarket <span class="sort-arrow">↕</span></th>
+            <th data-scol="available_sqft">Avail. SF <span class="sort-arrow">↕</span></th>
+            <th data-scol="base_rent">Base Rent <span class="sort-arrow">↕</span></th>
+            <th data-scol="as_built">As-Built <span class="sort-arrow">↕</span></th>
+            <th data-scol="rank">Rank <span class="sort-arrow">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="survey-review-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Survey detail modal -->
+  <div class="modal-overlay" id="survey-modal">
+    <div class="modal-card">
+      <button class="modal-close" id="survey-modal-close">&times;</button>
+      <img class="modal-photo" id="modal-photo" src="" alt="Site photo" />
+      <div class="modal-body">
+        <div class="modal-title" id="modal-title"></div>
+        <div class="modal-field">
+          <div class="modal-label">Address</div>
+          <div class="modal-value" id="modal-address"></div>
+        </div>
+        <div style="display:flex;gap:20px">
+          <div class="modal-field" style="flex:1">
+            <div class="modal-label">Available SQFT</div>
+            <div class="modal-value" id="modal-sqft"></div>
+          </div>
+          <div class="modal-field" style="flex:1">
+            <div class="modal-label">Base Rent</div>
+            <div class="modal-value" id="modal-rent"></div>
+          </div>
+        </div>
+        <div class="modal-field">
+          <div class="modal-label">As-Built (Former Use)</div>
+          <div class="modal-value" id="modal-asbuilt"></div>
+        </div>
+        <div class="modal-field">
+          <div class="modal-label">Site Notes</div>
+          <div class="modal-value notes" id="modal-notes"></div>
+        </div>
+        <a class="modal-flyer-btn" id="modal-flyer-btn" href="#" target="_blank">📄 View Flyer</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="statusbar">Lat — &nbsp; Lng —</div>
+<div id="toast"></div>
+
+<script>
+// ── CONFIG (from client.js) ───────────────────────────────────────────────────
+const DATA_URL = "properties.json";
+
+// Build DEAL_COLORS from client config — { default: primaryColor, TypeA: colorA, … }
+const DEAL_COLORS = Object.assign(
+  { default: CLIENT_CONFIG.primaryColor },
+  Object.fromEntries(CLIENT_CONFIG.dealTypes.map(t => [t.key, t.color]))
+);
+
+// Tag icon used for individual deal type cards
+const _TAG_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
+const _GRID_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>`;
+
+// Deal type cards for the sidebar Active Deals sub-page
+const DEAL_TYPES_CONFIG = [
+  { key: "all", label: "All Deals", color: CLIENT_CONFIG.primaryColor, icon: _GRID_ICON },
+  ...CLIENT_CONFIG.dealTypes.map(t => ({ key: t.key, label: t.label, color: t.color, icon: _TAG_ICON })),
+];
+
+// ── BRAND INIT ────────────────────────────────────────────────────────────────
+document.getElementById("brand-letter").textContent = CLIENT_CONFIG.brandLetter;
+document.getElementById("brand-name").textContent   = CLIENT_CONFIG.appName;
+
+// ── DEAL CHIPS (Deal View filter row) ─────────────────────────────────────────
+function buildDealChips() {
+  const container = document.getElementById("deals-filters");
+  container.innerHTML = "";
+  // "All" chip
+  const allChip = document.createElement("div");
+  allChip.className = "deal-chip active";
+  allChip.dataset.dealType = "all";
+  allChip.textContent = "All";
+  container.appendChild(allChip);
+  // One chip per deal type from config
+  CLIENT_CONFIG.dealTypes.forEach(t => {
+    const chip = document.createElement("div");
+    chip.className = "deal-chip";
+    chip.dataset.dealType = t.key;
+    chip.style.setProperty("--chip-color", t.color);
+    chip.textContent = "● " + t.label;
+    container.appendChild(chip);
+  });
+}
+buildDealChips();
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+// ── SIDEBAR PAGE NAV ─────────────────────────────────────────────────────────
+function showSidebarPage(name) {
+  document.querySelectorAll(".sidebar-page").forEach(p => p.classList.add("sp-hidden"));
+  document.getElementById("sidebar-" + name).classList.remove("sp-hidden");
+}
+document.getElementById("nav-portfolio").addEventListener("click",     () => showSidebarPage("portfolio"));
+document.getElementById("sidebar-back").addEventListener("click",          () => showSidebarPage("home"));
+document.getElementById("nav-deals-sidebar").addEventListener("click",    () => showSidebarPage("deals-nav"));
+document.getElementById("sidebar-deals-back").addEventListener("click",   () => showSidebarPage("home"));
+document.getElementById("nav-survey-sidebar").addEventListener("click",   () => showSidebarPage("survey-nav"));
+document.getElementById("sidebar-survey-nav-back").addEventListener("click", () => showSidebarPage("home"));
+
+// ── PAGE NAV ──────────────────────────────────────────────────────────────────
+document.querySelectorAll(".nav-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.view;
+    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    document.getElementById("view-" + target).classList.add("active");
+
+    if (target === "map")    setTimeout(() => map.invalidateSize(), 50);
+    if (target === "deals")  renderDealsTable();
+    if (target === "survey") renderSurveyReviewTable();
+  });
+});
+
+// ── HEADER ACTIONS ────────────────────────────────────────────────────────────
+document.getElementById("btn-refresh").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-refresh");
+  btn.classList.add("loading");
+  await loadData();
+  await loadSurveys();
+  btn.classList.remove("loading");
+  showToast("Data refreshed");
+});
+
+document.getElementById("btn-export").addEventListener("click", () => {
+  if (!allProperties.length) return;
+  const cols = ["site_id","store_name","full_address","deal_type","deal_status","drumline","gross_sales_rank","deal_notes","lat","lng"];
+  const header = cols.join(",");
+  const rows = allProperties.map(p =>
+    cols.map(c => `"${(p[c] ?? "").toString().replace(/"/g, '""')}"`).join(",")
+  );
+  const csv  = [header, ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement("a"), { href: url, download: "sa-properties.csv" });
+  a.click(); URL.revokeObjectURL(url);
+  showToast("CSV downloaded");
+});
+
+document.getElementById("btn-share").addEventListener("click", () => {
+  navigator.clipboard.writeText(window.location.href)
+    .then(() => showToast("Link copied to clipboard"))
+    .catch(() => showToast("Could not copy link"));
+});
+
+// ── MAP INIT ──────────────────────────────────────────────────────────────────
+const map = L.map("map", { zoomControl: true }).setView(CLIENT_CONFIG.mapCenter, CLIENT_CONFIG.mapZoom);
+
+// Base — satellite imagery (Esri, with OSM fallback)
+const esriSat = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  { attribution: '&copy; <a href="https://www.esri.com/">Esri</a>', maxZoom: 19 }
+);
+const osmBase = L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19 }
+);
+// Try Esri first; if tiles fail to load within 8s, fall back to OSM
+esriSat.addTo(map);
+const _esriTest = new Image();
+_esriTest.onload = () => {};   // Esri works — keep it
+_esriTest.onerror = () => {    // Esri blocked — switch to OSM
+  map.removeLayer(esriSat);
+  osmBase.addTo(map);
+};
+_esriTest.src = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/4/5/4";
+
+// Overlay 1 — roads & highways (Esri Transportation reference layer)
+const roadOverlay = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+  { maxZoom: 19, opacity: 0.25, pane: "overlayPane" }
+).addTo(map);
+
+// Overlay 2 — city labels, state & country boundaries
+const boundaryOverlay = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+  { maxZoom: 19, opacity: 0.35, pane: "overlayPane" }
+).addTo(map);
+
+// ── ZOOM-RESPONSIVE PINS + OVERLAY INTENSITY ──────────────────────────────────
+const ZOOM_CLASSES = ["zoom-xs","zoom-sm","zoom-md","zoom-lg","zoom-xl"];
+
+function updateZoom() {
+  const z = map.getZoom();
+  const el = document.getElementById("map");
+  ZOOM_CLASSES.forEach(c => el.classList.remove(c));
+  if      (z <= 4)  el.classList.add("zoom-xs");
+  else if (z <= 6)  el.classList.add("zoom-sm");
+  else if (z <= 9)  el.classList.add("zoom-md");
+  else if (z <= 12) el.classList.add("zoom-lg");
+  else              el.classList.add("zoom-xl");
+
+  // Overlays grow more opaque as you zoom in
+  const ro = Math.min(0.90, 0.20 + (z - 3) * 0.065);
+  const bo = Math.min(0.95, 0.30 + (z - 3) * 0.060);
+  if (roadOverlay._map)     roadOverlay.setOpacity(Math.max(0.10, ro));
+  if (boundaryOverlay._map) boundaryOverlay.setOpacity(Math.max(0.20, bo));
+}
+
+map.on("zoomend", updateZoom);
+map.whenReady(updateZoom);
+
+map.on("mousemove", e => {
+  document.getElementById("statusbar").textContent =
+    `Lat ${e.latlng.lat.toFixed(5)}   Lng ${e.latlng.lng.toFixed(5)}`;
+});
+
+// ── LAYER REGISTRY ────────────────────────────────────────────────────────────
+const LAYERS = {};
+function registerLayer(name, lg) { LAYERS[name] = lg; lg.addTo(map); }
+
+// ── SURVEY MULTI-SHEET ────────────────────────────────────────────────────────
+let surveyLayers = {}, surveyMarkerMaps = {}, activeSurveys = new Set();
+
+function toggleSurveySheet(name, on) {
+  if (on) { activeSurveys.add(name); if (surveyLayers[name]) surveyLayers[name].addTo(map); }
+  else    { activeSurveys.delete(name); if (surveyLayers[name]) map.removeLayer(surveyLayers[name]); }
+  document.getElementById("survey-section").classList.toggle("visible", activeSurveys.size > 0);
+  renderSurveyList();
+  syncSurveyUI();
+}
+
+function syncSurveyUI() {
+  const total = Object.keys(allSurveys).length;
+  // Sidebar sheet chips
+  document.querySelectorAll(".survey-sheet-chip").forEach(c =>
+    c.classList.toggle("active", activeSurveys.has(c.dataset.sheet))
+  );
+  // Survey nav page cards
+  document.querySelectorAll(".survey-option-card").forEach(c =>
+    c.classList.toggle("active", activeSurveys.has(c.dataset.sheet))
+  );
+  // Layer sub-checkboxes
+  document.querySelectorAll(".survey-sub-cb").forEach(cb => {
+    cb.checked = activeSurveys.has(cb.dataset.sheet);
+    cb.closest(".layer-sub-item").classList.toggle("enabled", cb.checked);
+  });
+  // Master checkbox: checked = any on, indeterminate = partial
+  const masterCb = document.querySelector('input[data-layer="surveys"]');
+  if (masterCb) {
+    masterCb.checked = activeSurveys.size > 0;
+    masterCb.indeterminate = activeSurveys.size > 0 && activeSurveys.size < total;
+    masterCb.closest(".layer-toggle").classList.toggle("enabled", activeSurveys.size > 0);
+  }
+}
+
+document.getElementById("layer-panel").addEventListener("change", e => {
+  const cb = e.target; if (!cb.dataset.layer) return;
+  if (cb.dataset.layer === "surveys") {
+    Object.keys(allSurveys).forEach(name => toggleSurveySheet(name, cb.checked));
+  } else if (cb.dataset.layer === "roads") {
+    cb.checked ? roadOverlay.addTo(map) : map.removeLayer(roadOverlay);
+    cb.closest(".layer-toggle").classList.toggle("enabled", cb.checked);
+  } else if (cb.dataset.layer === "boundaries") {
+    cb.checked ? boundaryOverlay.addTo(map) : map.removeLayer(boundaryOverlay);
+    cb.closest(".layer-toggle").classList.toggle("enabled", cb.checked);
+  } else {
+    const layer = LAYERS[cb.dataset.layer];
+    if (layer) { cb.checked ? layer.addTo(map) : map.removeLayer(layer); }
+    cb.closest(".layer-toggle").classList.toggle("enabled", cb.checked);
+  }
+});
+
+document.getElementById("survey-expand-btn").addEventListener("click", () => {
+  const sub = document.getElementById("survey-sub-options");
+  const expanded = sub.classList.toggle("expanded");
+  document.getElementById("survey-expand-btn").textContent = expanded ? "▾" : "▸";
+});
+
+function renderSurveySheetChips() {
+  const container = document.getElementById("survey-filter");
+  container.innerHTML = "";
+  Object.keys(allSurveys).forEach(name => {
+    const chip = document.createElement("div");
+    chip.className = "chip survey-chip survey-sheet-chip";
+    chip.dataset.sheet = name;
+    chip.textContent = "● " + name;
+    chip.addEventListener("click", () => toggleSurveySheet(name, !activeSurveys.has(name)));
+    container.appendChild(chip);
+  });
+}
+
+function renderSurveySubOptions() {
+  const sub = document.getElementById("survey-sub-options");
+  sub.innerHTML = "";
+  Object.keys(allSurveys).forEach(name => {
+    const label = document.createElement("label");
+    label.className = "layer-sub-item";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.className = "survey-sub-cb"; cb.dataset.sheet = name;
+    cb.addEventListener("change", () => toggleSurveySheet(name, cb.checked));
+    label.appendChild(cb);
+    label.append(" " + name);
+    sub.appendChild(label);
+  });
+}
+
+// ── MARKER HELPERS ────────────────────────────────────────────────────────────
+function colorForType(type) { return DEAL_COLORS[type] || DEAL_COLORS.default; }
+
+function makeIcon(color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
+    <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z"
+          fill="${color}" stroke="rgba(0,0,0,.4)" stroke-width="1.5"/>
+    <circle cx="12" cy="12" r="5" fill="white" opacity=".9"/></svg>`;
+  return L.divIcon({ html: svg, className: "prop-pin", iconSize: [24,32], iconAnchor: [12,32], popupAnchor: [0,-34] });
+}
+
+// ── SIDEBAR ───────────────────────────────────────────────────────────────────
+let allProperties = [], activeType = "all", markerMap = {};
+
+function badge(type) {
+  const c = colorForType(type);
+  return `<span class="prop-badge" style="background:${c}22;color:${c};border:1px solid ${c}44">${type||"—"}</span>`;
+}
+
+function renderList(props) {
+  const list = document.getElementById("property-list");
+  list.innerHTML = "";
+  props.forEach(p => {
+    const card = document.createElement("div");
+    card.className = "prop-card"; card.dataset.id = p.site_id;
+    card.innerHTML = `
+      <div class="prop-name">${p.store_name||"Unnamed"}</div>
+      <div class="prop-meta">${p.full_address||""}</div>
+      <div class="prop-meta">EOC: ${p.gross_sales_rank||"—"}</div>
+      ${badge(p.deal_type)}`;
+    card.addEventListener("click", () => selectProperty(p.site_id));
+    list.appendChild(card);
+  });
+  document.getElementById("count").textContent =
+    `${props.length} propert${props.length===1?"y":"ies"}`;
+  // Keep home-page portfolio card subtitle in sync
+  const total = allProperties.length;
+  document.getElementById("portfolio-count").textContent =
+    `${total} location${total !== 1 ? "s" : ""}`;
+}
+
+function selectProperty(id) {
+  document.querySelectorAll(".prop-card").forEach(c => c.classList.remove("active"));
+  const card = document.querySelector(`.prop-card[data-id="${id}"]`);
+  if (card) { card.classList.add("active"); card.scrollIntoView({ block:"nearest", behavior:"smooth" }); }
+  const marker = markerMap[id];
+  if (marker) { map.flyTo(marker.getLatLng(), 14, { duration: .8 }); marker.openPopup(); }
+}
+
+function filteredProperties() {
+  const q = document.getElementById("search").value.toLowerCase();
+  return allProperties.filter(p => {
+    const matchType = activeType === "all" || p.deal_type === activeType;
+    const matchQ = !q || [p.store_name, p.full_address, p.deal_type]
+      .some(v => (v||"").toLowerCase().includes(q));
+    return matchType && matchQ;
+  });
+}
+
+function refreshSidebar() { renderList(filteredProperties()); }
+
+function buildChips(properties) {
+  const types = [...new Set(properties.map(p => p.deal_type).filter(Boolean))].sort();
+  const container = document.getElementById("filters");
+  types.forEach(t => {
+    const chip = document.createElement("div");
+    chip.className = "chip"; chip.dataset.type = t; chip.textContent = t;
+    container.appendChild(chip);
+  });
+  container.addEventListener("click", e => {
+    const chip = e.target.closest(".chip"); if (!chip) return;
+    activeType = chip.dataset.type;
+    container.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    refreshSidebar();
+  });
+}
+
+document.getElementById("search").addEventListener("input", refreshSidebar);
+
+// ── SURVEY DETAIL MODAL ───────────────────────────────────────────────────────
+function openSurveyModal(s) {
+  const modal = document.getElementById("survey-modal");
+  const photo = document.getElementById("modal-photo");
+
+  // Photo
+  if (s.photo_link) {
+    photo.src = s.photo_link;
+    photo.style.display = "block";
+    photo.onerror = () => { photo.style.display = "none"; };
+  } else {
+    photo.style.display = "none";
+    photo.src = "";
+  }
+
+  // Fields
+  document.getElementById("modal-title").textContent =
+    `#${surveyNum(s.survey_order)} · ${s.street || ""}${s.city ? ", " + s.city : ""}`;
+  document.getElementById("modal-address").textContent =
+    [s.street, s.city, s.state, s.zip].filter(Boolean).join(", ") || "—";
+  document.getElementById("modal-sqft").textContent =
+    s.available_sqft ? s.available_sqft + " SF" : "—";
+  document.getElementById("modal-rent").textContent =
+    s.base_rent ? "$" + s.base_rent + "/SF" : "—";
+  document.getElementById("modal-asbuilt").textContent = s.as_built || "—";
+  document.getElementById("modal-notes").textContent = s.site_notes || "—";
+
+  // Flyer button
+  const flyerBtn = document.getElementById("modal-flyer-btn");
+  if (s.flyer_link) {
+    flyerBtn.href = s.flyer_link;
+    flyerBtn.classList.remove("disabled");
+  } else {
+    flyerBtn.href = "#";
+    flyerBtn.classList.add("disabled");
+    flyerBtn.onclick = e => e.preventDefault();
+  }
+
+  modal.classList.add("open");
+}
+
+document.getElementById("survey-modal-close").addEventListener("click", () => {
+  document.getElementById("survey-modal").classList.remove("open");
+});
+document.getElementById("survey-modal").addEventListener("click", e => {
+  if (e.target === e.currentTarget)
+    document.getElementById("survey-modal").classList.remove("open");
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.getElementById("survey-modal").classList.remove("open");
+});
+
+// ── SURVEY REVIEW TABLE ───────────────────────────────────────────────────────
+let allSurveys = {};   // { sheetName: [rows] } — populated by loadSurveys()
+let activeSurveyTab = null;
+let surveySortCol = "survey_order", surveySortAsc = true;
+
+function renderSurveyTabs() {
+  const tabsEl = document.getElementById("survey-tabs");
+  tabsEl.innerHTML = "";
+  const names = Object.keys(allSurveys);
+  if (!names.length) return;
+  if (!activeSurveyTab || !allSurveys[activeSurveyTab]) activeSurveyTab = names[0];
+  names.forEach(name => {
+    const btn = document.createElement("button");
+    btn.className = "survey-tab" + (name === activeSurveyTab ? " active" : "");
+    btn.textContent = name;
+    btn.addEventListener("click", () => {
+      activeSurveyTab = name;
+      document.querySelectorAll(".survey-tab").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderSurveyReviewTable();
+    });
+    tabsEl.appendChild(btn);
+  });
+}
+
+function renderSurveyReviewTable() {
+  const names = Object.keys(allSurveys);
+  if (!activeSurveyTab && names.length) activeSurveyTab = names[0];
+  let rows = [...(allSurveys[activeSurveyTab] || [])];
+
+  rows.sort((a, b) => {
+    const va = (a[surveySortCol] ?? "").toString().toLowerCase();
+    const vb = (b[surveySortCol] ?? "").toString().toLowerCase();
+    const na = parseFloat(va), nb = parseFloat(vb);
+    const cmp = (!isNaN(na) && !isNaN(nb)) ? na - nb : va.localeCompare(vb);
+    return surveySortAsc ? cmp : -cmp;
+  });
+
+  document.getElementById("survey-view-count").textContent = `${rows.length} site${rows.length !== 1 ? "s" : ""}`;
+
+  const tbody = document.getElementById("survey-review-tbody");
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="no-deals">No survey data available</td></tr>`;
+  } else {
+    tbody.innerHTML = rows.map(s => {
+      const ring = rankColor(s.rank);
+      return `<tr data-survey-order="${s.survey_order}" style="cursor:pointer">
+        <td><span class="survey-num" style="border:2px solid ${ring};color:${ring};display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-size:.72rem;font-weight:700">${surveyNum(s.survey_order)}</span></td>
+        <td><span class="survey-addr-link">${s.street||"—"}${s.city ? ", "+s.city : ""}</span></td>
+        <td>${s.submarket||"—"}</td>
+        <td>${s.available_sqft ? s.available_sqft+" SF" : "—"}</td>
+        <td>${s.base_rent ? "$"+s.base_rent+"/SF" : "—"}</td>
+        <td>${s.as_built||"—"}</td>
+        <td><span class="rank-badge" style="background:${ring}22;color:${ring};border:1px solid ${ring}44">${s.rank||"—"}</span></td>
+      </tr>`;
+    }).join("");
+
+    tbody.querySelectorAll("tr[data-survey-order]").forEach(tr => {
+      tr.addEventListener("click", () => {
+        const order = tr.dataset.surveyOrder;
+        const s = (allSurveys[activeSurveyTab]||[]).find(x => String(x.survey_order) === String(order));
+        if (s) openSurveyModal(s);
+      });
+    });
+  }
+
+  document.querySelectorAll("#survey-review-table th").forEach(th => {
+    th.classList.toggle("sorted", th.dataset.scol === surveySortCol);
+    const arrow = th.querySelector(".sort-arrow");
+    arrow.textContent = th.dataset.scol === surveySortCol ? (surveySortAsc ? "↑" : "↓") : "↕";
+  });
+}
+
+document.querySelectorAll("#survey-review-table th").forEach(th => {
+  th.addEventListener("click", () => {
+    if (surveySortCol === th.dataset.scol) surveySortAsc = !surveySortAsc;
+    else { surveySortCol = th.dataset.scol; surveySortAsc = true; }
+    renderSurveyReviewTable();
+  });
+});
+
+// ── DEAL VIEW TABLE ───────────────────────────────────────────────────────────
+let dealSortCol = "store_name", dealSortAsc = true, dealSearchQ = "", dealTypeFilter = "all";
+
+function activeDeals() {
+  return allProperties.filter(p => p.deal_type && p.deal_type.trim() !== "");
+}
+
+// Deal type filter chips
+document.getElementById("deals-filters").addEventListener("click", e => {
+  const chip = e.target.closest(".deal-chip"); if (!chip) return;
+  dealTypeFilter = chip.dataset.dealType;
+  document.querySelectorAll(".deal-chip").forEach(c => c.classList.remove("active"));
+  chip.classList.add("active");
+  renderDealsTable();
+});
+
+function renderDealsTable() {
+  const q = dealSearchQ.toLowerCase();
+  let rows = activeDeals().filter(p => {
+    const matchType = dealTypeFilter === "all" || (p.deal_type||"").trim() === dealTypeFilter;
+    const matchQ = !q || [p.store_name, p.full_address, p.deal_type, p.deal_status, p.deal_notes]
+      .some(v => (v||"").toLowerCase().includes(q));
+    return matchType && matchQ;
+  });
+
+  rows.sort((a, b) => {
+    const va = (a[dealSortCol] ?? "").toString().toLowerCase();
+    const vb = (b[dealSortCol] ?? "").toString().toLowerCase();
+    const num_a = parseFloat(va), num_b = parseFloat(vb);
+    const cmp = (!isNaN(num_a) && !isNaN(num_b))
+      ? num_a - num_b
+      : va.localeCompare(vb);
+    return dealSortAsc ? cmp : -cmp;
+  });
+
+  document.getElementById("deal-count").textContent = `${rows.length} deal${rows.length!==1?"s":""}`;
+
+  const tbody = document.getElementById("deals-tbody");
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="no-deals">No active deals found</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(p => {
+    const color = colorForType(p.deal_type);
+    return `<tr>
+      <td><strong>${p.store_name||"—"}</strong></td>
+      <td>${p.full_address||"—"}</td>
+      <td><span class="deal-badge" style="background:${color}22;color:${color};border:1px solid ${color}44">${p.deal_type||"—"}</span></td>
+      <td><span class="status-badge">${p.deal_status||"—"}</span></td>
+      <td>${p.drumline||"—"}</td>
+      <td>${p.gross_sales_rank||"—"}</td>
+      <td class="notes-cell" title="${(p.deal_notes||"").replace(/"/g,"&quot;")}">${p.deal_notes||"—"}</td>
+    </tr>`;
+  }).join("");
+
+  // Update sort arrows
+  document.querySelectorAll("#deals-table th").forEach(th => {
+    th.classList.toggle("sorted", th.dataset.col === dealSortCol);
+    const arrow = th.querySelector(".sort-arrow");
+    if (th.dataset.col === dealSortCol) {
+      arrow.textContent = dealSortAsc ? "↑" : "↓";
+    } else {
+      arrow.textContent = "↕";
+    }
+  });
+}
+
+// Sort on header click
+document.querySelectorAll("#deals-table th").forEach(th => {
+  th.addEventListener("click", () => {
+    if (dealSortCol === th.dataset.col) dealSortAsc = !dealSortAsc;
+    else { dealSortCol = th.dataset.col; dealSortAsc = true; }
+    renderDealsTable();
+  });
+});
+
+document.getElementById("deals-search").addEventListener("input", e => {
+  dealSearchQ = e.target.value;
+  renderDealsTable();
+});
+
+// ── DEAL TYPE NAV CARDS ───────────────────────────────────────────────────────
+const DEAL_TYPES_CONFIG = [
+  { key: "all",     label: "All Deals", color: "#EE2A24",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>` },
+  { key: "Renewal", label: "Renewal",   color: "#f97316",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>` },
+  { key: "Newlo",   label: "Newlo",     color: "#eab308",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>` },
+];
+
+function renderDealTypeCards() {
+  const container = document.getElementById("deals-options");
+  if (!container) return;
+  const deals = activeDeals();
+  container.innerHTML = "";
+
+  DEAL_TYPES_CONFIG.forEach(t => {
+    const count = t.key === "all"
+      ? deals.length
+      : deals.filter(p => (p.deal_type||"").trim() === t.key).length;
+    if (t.key !== "all" && count === 0) return;
+
+    const card = document.createElement("button");
+    card.className = "sidebar-option-card" + (activeType === t.key ? " active" : "");
+    card.style.setProperty("--option-color", t.color);
+    card.dataset.dealKey = t.key;
+    card.innerHTML = `
+      <div class="option-dot">${t.icon}</div>
+      <div class="option-text">
+        <div class="option-label">${t.label}</div>
+        <div class="option-sub">${count} deal${count !== 1 ? "s" : ""}</div>
+      </div>
+      <span class="option-check">✓</span>`;
+    card.addEventListener("click", () => {
+      activeType = t.key;
+      // Sync portfolio chip
+      document.querySelectorAll("#filters .chip").forEach(c => {
+        c.classList.toggle("active", c.dataset.type === t.key);
+      });
+      refreshSidebar();
+      showSidebarPage("portfolio");
+      // Mark active card
+      container.querySelectorAll(".sidebar-option-card").forEach(c =>
+        c.classList.toggle("active", c.dataset.dealKey === t.key)
+      );
+    });
+    container.appendChild(card);
+  });
+
+  // Update home-page nav card subtitle + sub-page header count
+  const el1 = document.getElementById("deals-nav-count");
+  const el2 = document.getElementById("deals-nav-total");
+  const label = `${deals.length} deal${deals.length !== 1 ? "s" : ""}`;
+  if (el1) el1.textContent = label;
+  if (el2) el2.textContent = label;
+}
+
+// ── SURVEY NAV CARDS ──────────────────────────────────────────────────────────
+function renderSurveyNavCards() {
+  const container = document.getElementById("survey-nav-options");
+  if (!container) return;
+  container.innerHTML = "";
+  const sheets = Object.keys(allSurveys);
+
+  if (!sheets.length) {
+    container.innerHTML = `<div style="padding:20px 16px;font-size:.82rem;color:var(--muted)">No survey data loaded.</div>`;
+  }
+
+  sheets.forEach(name => {
+    const rows   = allSurveys[name];
+    const isOn   = activeSurveys.has(name);
+
+    const card = document.createElement("button");
+    card.className = "sidebar-option-card survey-option-card" + (isOn ? " active" : "");
+    card.style.setProperty("--option-color", "#22c55e");
+    card.dataset.sheet = name;
+    card.innerHTML = `
+      <div class="option-dot">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </div>
+      <div class="option-text">
+        <div class="option-label">${name}</div>
+        <div class="option-sub">${rows.length} site${rows.length !== 1 ? "s" : ""}</div>
+      </div>
+      <span class="option-check">✓</span>`;
+    card.addEventListener("click", () => {
+      const nowOn = !activeSurveys.has(name);
+      toggleSurveySheet(name, nowOn);
+      card.classList.toggle("active", nowOn);
+    });
+    container.appendChild(card);
+  });
+
+  // Update home-page nav card subtitle + sub-page header count
+  const total = sheets.reduce((s, n) => s + allSurveys[n].length, 0);
+  const label = `${total} site${total !== 1 ? "s" : ""}`;
+  const el1 = document.getElementById("survey-nav-count");
+  const el2 = document.getElementById("survey-nav-total");
+  if (el1) el1.textContent = label;
+  if (el2) el2.textContent = label;
+}
+
+// ── SURVEY LAYER ─────────────────────────────────────────────────────────────
+function surveyNum(order) {
+  const n = parseFloat(order);
+  return isNaN(n) ? (order || "?") : String(Math.round(n));
+}
+
+const RANK_COLORS = { green: "#22c55e", yellow: "#f59e0b" };
+function rankColor(rank) { return RANK_COLORS[(rank||"").toLowerCase()] || "#94a3b8"; }
+
+function makeSurveyIcon(order, rank) {
+  const ring = rankColor(rank);
+  const num  = surveyNum(order);
+  const fs   = num.length > 2 ? 9 : 12;
+  const svg  = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+    <circle cx="16" cy="16" r="14" fill="#0b1120" stroke="${ring}" stroke-width="3"/>
+    <text x="16" y="21" text-anchor="middle" font-size="${fs}" font-weight="700"
+          fill="white" font-family="system-ui,sans-serif">${num}</text>
+  </svg>`;
+  return L.divIcon({ html: svg, className: "survey-pin", iconSize: [32,32], iconAnchor: [16,16], popupAnchor: [0,-20] });
+}
+
+function renderSurveyList() {
+  const list = document.getElementById("survey-list");
+  list.innerHTML = "";
+  const active = Object.keys(allSurveys).filter(n => activeSurveys.has(n));
+  const multiSheet = active.length > 1;
+  let total = 0;
+
+  active.forEach(sheetName => {
+    const surveys = allSurveys[sheetName];
+    total += surveys.length;
+    if (multiSheet) {
+      const hdr = document.createElement("div");
+      hdr.className = "survey-group-header";
+      hdr.textContent = sheetName;
+      list.appendChild(hdr);
+    }
+    surveys.forEach(s => {
+      const ring = rankColor(s.rank);
+      const card = document.createElement("div");
+      card.className = "survey-card";
+      card.dataset.id = s.survey_order;
+      card.dataset.sheet = sheetName;
+      card.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="survey-num" style="border:2px solid ${ring};color:${ring}">${surveyNum(s.survey_order)}</span>
+          <div>
+            <div class="prop-name">${s.street||""}, ${s.city||""}</div>
+            <div class="prop-meta">${s.available_sqft ? s.available_sqft+" SF" : ""}${s.available_sqft && s.base_rent ? " · " : ""}${s.base_rent ? "$"+s.base_rent+"/SF" : ""}</div>
+          </div>
+        </div>`;
+      card.addEventListener("click", () => selectSurvey(sheetName, s.survey_order));
+      list.appendChild(card);
+    });
+  });
+  document.getElementById("survey-count").textContent = `${total} site${total !== 1 ? "s" : ""}`;
+}
+
+function selectSurvey(sheetName, order) {
+  document.querySelectorAll(".survey-card").forEach(c => c.classList.remove("active"));
+  const card = document.querySelector(`.survey-card[data-sheet="${sheetName}"][data-id="${order}"]`);
+  if (card) { card.classList.add("active"); card.scrollIntoView({ block:"nearest", behavior:"smooth" }); }
+  const marker = surveyMarkerMaps[sheetName]?.[order];
+  if (marker) { map.flyTo(marker.getLatLng(), 15, { duration: .8 }); marker.openPopup(); }
+}
+
+async function loadSurveys() {
+  try {
+    const resp = await fetch("surveys.json?t=" + Date.now());
+    if (!resp.ok) return;
+    let data = await resp.json();
+    // Backward compat: flat array → single-sheet object
+    if (Array.isArray(data)) { if (!data.length) return; data = { "Survey": data }; }
+    if (!Object.keys(data).length) return;
+
+    allSurveys = data;
+    // Clear old layers
+    Object.values(surveyLayers).forEach(lg => { if (map.hasLayer(lg)) map.removeLayer(lg); });
+    surveyLayers = {}; surveyMarkerMaps = {};
+
+    for (const [sheetName, surveys] of Object.entries(data)) {
+      const layerGroup = L.layerGroup();
+      surveyMarkerMaps[sheetName] = {};
+
+      surveys.forEach(s => {
+        const lat = parseFloat(s.lat), lng = parseFloat(s.lng);
+        if (isNaN(lat) || isNaN(lng)) return;
+        const marker = L.marker([lat, lng], { icon: makeSurveyIcon(s.survey_order, s.rank) });
+
+        const pid = `sph-${sheetName.replace(/\W/g,"")}-${s.survey_order}`;
+        const photoHtml = s.photo_link ? `
+          <img class="survey-photo" src="${s.photo_link}"
+               onerror="this.style.display='none';document.getElementById('${pid}').style.display='block'"/>
+          <a id="${pid}" class="survey-photo-link" href="${s.photo_link}" target="_blank">📷 View Photo</a>` : "";
+        const flyerHtml = s.flyer_link
+          ? `<a class="popup-flyer-link" href="${s.flyer_link}" target="_blank">📄 View Flyer</a>` : "";
+
+        marker.bindPopup(`
+          <div class="popup-title">#${surveyNum(s.survey_order)} · ${s.street||""}, ${s.city||""}</div>
+          ${photoHtml}
+          <div class="popup-row">Available SF &nbsp;<span>${s.available_sqft||"—"}</span></div>
+          <div class="popup-row">Base Rent &nbsp;<span>${s.base_rent ? "$"+s.base_rent+"/SF" : "—"}</span></div>
+          ${flyerHtml}
+          ${s.broker ? `<div class="popup-row" style="margin-top:6px">Broker &nbsp;<span>${s.broker}</span></div>` : ""}
+        `, { maxWidth: 280 });
+
+        marker.on("click", () => {
+          document.querySelectorAll(".survey-card").forEach(c => c.classList.remove("active"));
+          const card = document.querySelector(`.survey-card[data-sheet="${sheetName}"][data-id="${s.survey_order}"]`);
+          if (card) { card.classList.add("active"); card.scrollIntoView({ block:"nearest", behavior:"smooth" }); }
+        });
+
+        layerGroup.addLayer(marker);
+        surveyMarkerMaps[sheetName][s.survey_order] = marker;
+      });
+      surveyLayers[sheetName] = layerGroup;
+    }
+
+    renderSurveySheetChips();
+    renderSurveySubOptions();
+    renderSurveyTabs();
+    renderSurveyList();
+    renderSurveyNavCards();
+  } catch (err) {
+    console.log("No survey data:", err.message);
+  }
+}
+
+// ── LOAD DATA ─────────────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const resp = await fetch(DATA_URL + "?t=" + Date.now());
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const properties = await resp.json();
+    allProperties = properties;
+
+    document.getElementById("last-updated").textContent =
+      `Updated ${new Date().toLocaleDateString()}`;
+
+    // Rebuild map markers
+    if (LAYERS.properties) { map.removeLayer(LAYERS.properties); delete LAYERS.properties; }
+    markerMap = {};
+    const markerLayer = L.layerGroup();
+
+    properties.forEach(p => {
+      if (!p.lat || !p.lng) return;
+      const color = colorForType(p.deal_type);
+      const marker = L.marker([p.lat, p.lng], { icon: makeIcon(color) });
+      marker.bindPopup(`
+        <div class="popup-title">${p.store_name||"Unnamed"}</div>
+        <div class="popup-row">Address &nbsp;<span>${p.full_address||"—"}</span></div>
+        <div class="popup-row">Deal Type &nbsp;<span>${p.deal_type||"—"}</span></div>
+        <div class="popup-row">Lease Exp. &nbsp;<span>${p.drumline||"—"}</span></div>
+        <div class="popup-row">Deal Notes &nbsp;<span>${p.deal_notes||"—"}</span></div>
+      `);
+      marker.on("click", () => {
+        document.querySelectorAll(".prop-card").forEach(c => c.classList.remove("active"));
+        const card = document.querySelector(`.prop-card[data-id="${p.site_id}"]`);
+        if (card) { card.classList.add("active"); card.scrollIntoView({ block:"nearest", behavior:"smooth" }); }
+      });
+      markerLayer.addLayer(marker);
+      markerMap[p.site_id] = marker;
+    });
+
+    registerLayer("properties", markerLayer);
+    buildChips(properties);
+    refreshSidebar();
+    renderDealTypeCards();
+
+    const coords = properties.filter(p => p.lat && p.lng).map(p => [p.lat, p.lng]);
+    if (coords.length) map.fitBounds(coords, { padding: [40, 40] });
+
+  } catch (err) {
+    console.error("Failed to load data:", err);
+    const errMsg = `<div style="padding:16px;color:#f77c6c;font-size:.8rem">⚠ Failed to load data.<br><small>${err.message}</small></div>`;
+    document.getElementById("property-list").innerHTML = errMsg;
+    // Also show error on map
+    document.getElementById("map").insertAdjacentHTML("afterbegin",
+      `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.8);color:#f77c6c;padding:16px 24px;border-radius:8px;font-size:.85rem;z-index:9999;text-align:center">
+        ⚠ Map data failed to load<br><small style="color:#888">${err.message}</small>
+      </div>`);
+  }
+}
+
+loadData();
+loadSurveys();
+</script>
+</body>
+</html>
