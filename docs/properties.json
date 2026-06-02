@@ -10,6 +10,8 @@
     "deal_notes": "",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2030-12-31",
+    "sqft": "1566.0",
+    "base_rent": "29.1235249042146",
     "lat": 40.1123142,
     "lng": -88.2431231
   },
@@ -24,6 +26,8 @@
     "deal_notes": "Skyler Peppo - \"Skyler Peppo - 5-year option flat rate ($29.13) \n1x5-year option (10% Increase flat rate) 1-year option notice \nLL drafting renewal amendment (4/28)\"",
     "drumline": "2026-12-31",
     "gross_sales_rank": "2026-12-31",
+    "sqft": "1250.0",
+    "base_rent": "28.56",
     "lat": 40.7386156,
     "lng": -89.6035566
   },
@@ -38,6 +42,8 @@
     "deal_notes": "",
     "drumline": "2027-01-31",
     "gross_sales_rank": "2037-01-31",
+    "sqft": "932.0",
+    "base_rent": "31.0557939914163",
     "lat": 41.1595394,
     "lng": -87.8867554
   },
@@ -52,6 +58,8 @@
     "deal_notes": "",
     "drumline": "2026-12-31",
     "gross_sales_rank": "2036-12-31",
+    "sqft": "1525.0",
+    "base_rent": "28.8524852459016",
     "lat": 41.4709294,
     "lng": -87.333872
   },
@@ -66,6 +74,8 @@
     "deal_notes": "",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2030-12-31",
+    "sqft": "1852.0",
+    "base_rent": "30.3875377969762",
     "lat": 41.5390549,
     "lng": -87.6360294
   },
@@ -80,6 +90,8 @@
     "deal_notes": "",
     "drumline": "2027-01-31",
     "gross_sales_rank": "2027-01-31",
+    "sqft": "1140.0",
+    "base_rent": "15.0",
     "lat": 41.560221,
     "lng": -90.608389
   },
@@ -94,6 +106,8 @@
     "deal_notes": "",
     "drumline": "2028-01-31",
     "gross_sales_rank": "2028-01-31",
+    "sqft": "1200.0",
+    "base_rent": "21.86",
     "lat": 41.6295018,
     "lng": -87.9332431
   },
@@ -108,6 +122,8 @@
     "deal_notes": "",
     "drumline": "2028-01-31",
     "gross_sales_rank": "2028-01-31",
+    "sqft": "1400.0",
+    "base_rent": "29.7100285714286",
     "lat": 41.6526846,
     "lng": -88.2036099
   },
@@ -122,6 +138,8 @@
     "deal_notes": "",
     "drumline": "2029-12-31",
     "gross_sales_rank": "2029-12-31",
+    "sqft": "1500.0",
+    "base_rent": "36.4004",
     "lat": 41.6608208,
     "lng": -87.7954319
   },
@@ -136,6 +154,8 @@
     "deal_notes": "",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2030-12-31",
+    "sqft": "2359.0",
+    "base_rent": "36.9480457821111",
     "lat": 41.698118,
     "lng": -87.740106
   },
@@ -150,6 +170,8 @@
     "deal_notes": "",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2029-12-31",
+    "sqft": "1967.0",
+    "base_rent": "60.4009354346721",
     "lat": 41.7192185,
     "lng": -87.7794436
   },
@@ -164,6 +186,8 @@
     "deal_notes": "",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2030-12-31",
+    "sqft": "1413.0",
+    "base_rent": "22.1270488322718",
     "lat": 41.790502,
     "lng": -87.8010627
   },
@@ -178,6 +202,8 @@
     "deal_notes": "Skyler Peppo - sent in one year renewal offer (5/29)",
     "drumline": "2026-11-30",
     "gross_sales_rank": "",
+    "sqft": "1218.0",
+    "base_rent": "58.5265024630542",
     "lat": 41.8000665,
     "lng": -88.2761621
   },
@@ -192,6 +218,8 @@
     "deal_notes": "",
     "drumline": "2030-01-31",
     "gross_sales_rank": "2030-01-31",
+    "sqft": "1000.0",
+    "base_rent": "31.74996",
     "lat": 41.8530732,
     "lng": -87.8501189
   },
@@ -206,6 +234,8 @@
     "deal_notes": "",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2030-12-31",
+    "sqft": "1710.0",
+    "base_rent": "40.2244912280702",
     "lat": 41.859389,
     "lng": -88.0588238
   },
@@ -220,6 +250,8 @@
     "deal_notes": "",
     "drumline": "2035-12-31",
     "gross_sales_rank": "2035-12-31",
+    "sqft": "2368.0",
+    "base_rent": "264.999983108108",
     "lat": 41.8880404,
     "lng": -87.624253
   },
@@ -234,6 +266,8 @@
     "deal_notes": "",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2030-12-31",
+    "sqft": "1378.0",
+    "base_rent": "58.9914078374456",
     "lat": 41.9020998,
     "lng": -88.1032652
   },
@@ -248,6 +282,8 @@
     "deal_notes": "Skyler Peppo - 2-year renewal",
     "drumline": "2026-04-30",
     "gross_sales_rank": "2026-04-30",
+    "sqft": "1128.0",
+    "base_rent": "26.0",
     "lat": 42.0047526,
     "lng": -88.0458184
   },
@@ -262,6 +298,8 @@
     "deal_notes": "",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2030-12-31",
+    "sqft": "1141.0",
+    "base_rent": "54.8035056967572",
     "lat": 42.0088836,
     "lng": -87.7349454
   },
@@ -276,6 +314,8 @@
     "deal_notes": "Skyler Peppo - flat rate, month-to-month in the meantime while we figure out long term plan - contacted broker (5/29)",
     "drumline": "2026-05-31",
     "gross_sales_rank": "2026-05-31",
+    "sqft": "1125.0",
+    "base_rent": "28.6826666666667",
     "lat": 42.0275069,
     "lng": -88.3386592
   },
@@ -290,6 +330,8 @@
     "deal_notes": "Skyler Peppo - Closing?",
     "drumline": "2026-12-31",
     "gross_sales_rank": "2026-12-31",
+    "sqft": "1243.0",
+    "base_rent": "31.9899919549477",
     "lat": 42.0490687,
     "lng": -88.0886606
   },
@@ -304,6 +346,8 @@
     "deal_notes": "Skyler Peppo - spoke to broker, offered a few options on relo. Back of center rent in mid teens \nFront outlot former ATI space Mid 30's\nWaiting on broker to present options\nExploring new development across the street  Golf Mill Shopping Center",
     "drumline": "2030-01-31",
     "gross_sales_rank": "2030-01-31",
+    "sqft": "1200.0",
+    "base_rent": "39.04",
     "lat": 42.0550528,
     "lng": -87.8377836
   },
@@ -318,6 +362,8 @@
     "deal_notes": "Skyler Peppo - open discussion with LL regarding renewal (hancock square)",
     "drumline": "2026-12-31",
     "gross_sales_rank": "2026-12-31",
+    "sqft": "1108.0",
+    "base_rent": "19.92",
     "lat": 42.0838172,
     "lng": -87.9802439
   },
@@ -332,6 +378,8 @@
     "deal_notes": "",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2030-12-31",
+    "sqft": "1904.0",
+    "base_rent": "40.7238655462185",
     "lat": 42.2273373,
     "lng": -88.3283067
   },
@@ -346,6 +394,8 @@
     "deal_notes": "",
     "drumline": "2029-03-31",
     "gross_sales_rank": "2029-03-31",
+    "sqft": "1000.0",
+    "base_rent": "15.0",
     "lat": 42.2603044,
     "lng": -89.0564366
   },
@@ -360,6 +410,8 @@
     "deal_notes": "",
     "drumline": "2029-01-31",
     "gross_sales_rank": "2029-01-31",
+    "sqft": "1527.0",
+    "base_rent": "22.16",
     "lat": 42.3055571,
     "lng": -87.9816887
   },
@@ -374,6 +426,8 @@
     "deal_notes": "Skyler Peppo - potential expansion of store for Fannie May Nutella",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2030-12-31",
+    "sqft": "1722.0",
+    "base_rent": "47.2068292682927",
     "lat": 41.80668,
     "lng": -88.038539
   },
@@ -388,6 +442,8 @@
     "deal_notes": "",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2030-12-31",
+    "sqft": "1900.0",
+    "base_rent": "42.6730105263158",
     "lat": 41.6367802,
     "lng": -87.0426596
   },
@@ -402,6 +458,8 @@
     "deal_notes": "",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2030-12-31",
+    "sqft": "3391.0",
+    "base_rent": "36.8804836331466",
     "lat": 42.0644901,
     "lng": -87.7470537
   },
@@ -416,6 +474,8 @@
     "deal_notes": "",
     "drumline": "2027-12-31",
     "gross_sales_rank": "2027-12-31",
+    "sqft": "1316.0",
+    "base_rent": "33.449726443769",
     "lat": 42.0644901,
     "lng": -87.7470537
   },
@@ -430,6 +490,8 @@
     "deal_notes": "",
     "drumline": "2027-12-31",
     "gross_sales_rank": "2027-12-31",
+    "sqft": "1198.0",
+    "base_rent": "31.8270450751252",
     "lat": 39.763542,
     "lng": -86.327817
   },
@@ -444,6 +506,8 @@
     "deal_notes": "",
     "drumline": "2028-01-31",
     "gross_sales_rank": "2028-01-31",
+    "sqft": "1200.0",
+    "base_rent": "25.9921",
     "lat": 41.726014,
     "lng": -86.1757012
   },
@@ -458,6 +522,8 @@
     "deal_notes": "",
     "drumline": "2028-04-30",
     "gross_sales_rank": "2028-04-30",
+    "sqft": "1040.0",
+    "base_rent": "59.7603461538462",
     "lat": 41.5970377,
     "lng": -87.8524938
   },
@@ -472,6 +538,8 @@
     "deal_notes": "",
     "drumline": "2028-12-31",
     "gross_sales_rank": "2028-12-31",
+    "sqft": "1200.0",
+    "base_rent": "27.5",
     "lat": 41.849664,
     "lng": -88.340331
   },
@@ -486,6 +554,8 @@
     "deal_notes": "",
     "drumline": "2029-01-31",
     "gross_sales_rank": "2029-01-31",
+    "sqft": "1225.0",
+    "base_rent": "53.5599673469388",
     "lat": 41.7478022,
     "lng": -88.1986972
   },
@@ -500,6 +570,8 @@
     "deal_notes": "",
     "drumline": "2029-10-13",
     "gross_sales_rank": "2031-09-30",
+    "sqft": "3806.0",
+    "base_rent": "17.5000105097215",
     "lat": 41.5990364,
     "lng": -87.7957678
   },
@@ -514,6 +586,8 @@
     "deal_notes": "",
     "drumline": "2029-12-31",
     "gross_sales_rank": "2029-12-31",
+    "sqft": "1534.0",
+    "base_rent": "40.4000260756193",
     "lat": 41.7727766,
     "lng": -87.9472745
   },
@@ -528,6 +602,8 @@
     "deal_notes": "",
     "drumline": "2029-12-31",
     "gross_sales_rank": "2029-12-31",
+    "sqft": "1200.0",
+    "base_rent": "31.9",
     "lat": 41.4948967,
     "lng": -87.4694996
   },
@@ -542,6 +618,8 @@
     "deal_notes": "",
     "drumline": "2030-02-28",
     "gross_sales_rank": "",
+    "sqft": "",
+    "base_rent": "",
     "lat": 39.7671105,
     "lng": -89.7089499
   },
@@ -556,6 +634,8 @@
     "deal_notes": "",
     "drumline": "2030-07-31",
     "gross_sales_rank": "2025-07-31",
+    "sqft": "1525.0",
+    "base_rent": "27.5900065573771",
     "lat": 39.6286607,
     "lng": -86.1172805
   },
@@ -570,6 +650,8 @@
     "deal_notes": "",
     "drumline": "2030-12-31",
     "gross_sales_rank": "2030-12-31",
+    "sqft": "1130.0",
+    "base_rent": "39.2920353982301",
     "lat": 42.0100487,
     "lng": -87.8300308
   },
@@ -584,6 +666,8 @@
     "deal_notes": "",
     "drumline": "2032-07-31",
     "gross_sales_rank": "2042-07-31",
+    "sqft": "870.0",
+    "base_rent": "31.0",
     "lat": 40.5065366,
     "lng": -88.9552716
   },
@@ -598,6 +682,8 @@
     "deal_notes": "",
     "drumline": "2032-08-31",
     "gross_sales_rank": "2042-08-31",
+    "sqft": "1575.0",
+    "base_rent": "22.5000380952381",
     "lat": 41.9516526,
     "lng": -88.7270458
   },
@@ -612,6 +698,8 @@
     "deal_notes": "",
     "drumline": "2033-01-31",
     "gross_sales_rank": "2033-01-31",
+    "sqft": "1200.0",
+    "base_rent": "22.0",
     "lat": 42.224667,
     "lng": -87.87198
   },
@@ -626,6 +714,8 @@
     "deal_notes": "",
     "drumline": "2033-03-23",
     "gross_sales_rank": "2043-03-23",
+    "sqft": "600.0",
+    "base_rent": "68.337",
     "lat": 41.956438,
     "lng": -87.8066764
   },
@@ -640,6 +730,8 @@
     "deal_notes": "",
     "drumline": "#N/A",
     "gross_sales_rank": "",
+    "sqft": "",
+    "base_rent": "",
     "lat": 40.9180148,
     "lng": -81.4283705
   }
