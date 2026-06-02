@@ -1667,13 +1667,17 @@ function openDealModal(siteId) {
 
   // Photo (placeholder until location photos are added)
   const wrap = document.getElementById("deal-photo-wrap");
+  const phHtml = msg => `<div class="modal-photo-ph">${_PHOTO_PH_ICON}<span>${msg}</span></div>`;
   if (p.photo_link) {
     wrap.innerHTML =
-      `<img class="modal-photo" src="${p.photo_link}" alt="Site photo"
-            onerror="this.closest('.modal-photo-wrap').innerHTML='<div class=&quot;modal-photo-ph&quot;>${_PHOTO_PH_ICON}<span>No photo yet</span></div>'"/>
+      `<img class="modal-photo" src="${p.photo_link}" alt="Site photo"/>
        <a class="view-full-photo" href="${p.photo_link}" target="_blank" rel="noopener">View full photo ↗</a>`;
+    const img = wrap.querySelector("img");
+    img.onerror = () => { wrap.innerHTML = phHtml("No photo yet"); };
+    img.style.cursor = "zoom-in";
+    img.onclick = () => window.open(p.photo_link, "_blank", "noopener");
   } else {
-    wrap.innerHTML = `<div class="modal-photo-ph">${_PHOTO_PH_ICON}<span>Photo coming soon</span></div>`;
+    wrap.innerHTML = phHtml("Photo coming soon");
   }
 
   const _addr = [p.street || p.full_address, p.city, p.state, p.zip].filter(Boolean).join(", ") || "—";
