@@ -35,8 +35,8 @@ const CLIENT_CONFIG = {
   dealTypes: [
     { key: "Renewal",     label: "Renewal",     color: "#f97316" },
     { key: "Closing",     label: "Closing",     color: "#f85149" },
-    { key: "Renovations", label: "Renovations", color: "#3fb950" },
-    { key: "Relo",        label: "Relo",        color: "#a78bfa" },
+    { key: "Renovations", label: "Renovations", color: "#eab308" },
+    { key: "Relo",        label: "Relo",        color: "#8A2BE2" },
   ],
 
   // ── Map Defaults ─────────────────────────────────────────────────────────

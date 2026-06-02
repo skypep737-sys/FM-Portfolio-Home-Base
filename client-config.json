@@ -12,6 +12,8 @@
     "zip":              "",
     "drumline":         "LEX",
     "gross_sales_rank": "EOC",
+    "sqft":             "SQFT",
+    "base_rent":        "Rent (PSF)",
     "deal_status":      "Deal Stage",
     "deal_notes":       "Latest Comment",
     "lat":              "Lat",

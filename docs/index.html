@@ -456,6 +456,9 @@
     .popup-title { font-weight: 700; font-size: .9rem; margin-bottom: 6px; color: #fff; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
     .popup-row   { font-size: .78rem; color: var(--muted); margin-top: 4px; }
     .popup-row span { color: var(--text); }
+    .popup-more { margin-top: 10px; width: 100%; background: var(--sa-red); color: #fff; border: none; border-radius: 6px; padding: 6px 8px; font-size: .78rem; font-weight: 600; cursor: pointer; }
+    .popup-more:hover { filter: brightness(1.12); }
+    tr.row-highlight > td { background: var(--sa-red-dim) !important; transition: background .3s ease; }
 
     #statusbar {
       position: fixed; bottom: 8px; right: 8px;
@@ -820,9 +823,6 @@
           <label class="layer-toggle enabled">
             <input type="checkbox" checked data-layer="roads" /> Roads &amp; Highways
           </label>
-          <label class="layer-toggle enabled">
-            <input type="checkbox" checked data-layer="boundaries" /> Boundaries &amp; Cities
-          </label>
         </div>
       </div>
 
@@ -907,7 +907,7 @@
         <thead>
           <tr>
             <th data-col="store_name">Store Name <span class="sort-arrow">↕</span></th>
-            <th data-col="full_address">Address <span class="sort-arrow">↕</span></th>
+            <th data-col="street">Address <span class="sort-arrow">↕</span></th>
             <th data-col="deal_type">Deal Type <span class="sort-arrow">↕</span></th>
             <th data-col="deal_status">Deal Status <span class="sort-arrow">↕</span></th>
             <th data-col="drumline">Lease Exp. <span class="sort-arrow">↕</span></th>
@@ -1205,9 +1205,6 @@ document.getElementById("layer-panel").addEventListener("change", e => {
   } else if (cb.dataset.layer === "roads") {
     cb.checked ? roadOverlay.addTo(map) : map.removeLayer(roadOverlay);
     cb.closest(".layer-toggle").classList.toggle("enabled", cb.checked);
-  } else if (cb.dataset.layer === "boundaries") {
-    cb.checked ? boundaryOverlay.addTo(map) : map.removeLayer(boundaryOverlay);
-    cb.closest(".layer-toggle").classList.toggle("enabled", cb.checked);
   } else {
     const layer = LAYERS[cb.dataset.layer];
     if (layer) { cb.checked ? layer.addTo(map) : map.removeLayer(layer); }
@@ -1482,7 +1479,7 @@ function renderDealsTable() {
   const q = dealSearchQ.toLowerCase();
   let rows = activeDeals().filter(p => {
     const matchType = dealTypeFilter === "all" || (p.deal_type||"").trim() === dealTypeFilter;
-    const matchQ = !q || [p.store_name, p.full_address, p.deal_type, p.deal_status, p.deal_notes]
+    const matchQ = !q || [p.store_name, p.street, p.full_address, p.deal_type, p.deal_status, p.deal_notes]
       .some(v => (v||"").toLowerCase().includes(q));
     return matchType && matchQ;
   });
@@ -1507,9 +1504,9 @@ function renderDealsTable() {
 
   tbody.innerHTML = rows.map(p => {
     const color = colorForType(p.deal_type);
-    return `<tr>
+    return `<tr data-id="${p.site_id}">
       <td><strong>${p.store_name||"—"}</strong></td>
-      <td>${p.full_address||"—"}</td>
+      <td>${[p.street||p.full_address, p.city, p.state].filter(Boolean).join(", ")||"—"}</td>
       <td><span class="deal-badge" style="background:${color}22;color:${color};border:1px solid ${color}44">${p.deal_type||"—"}</span></td>
       <td><span class="status-badge">${p.deal_status||"—"}</span></td>
       <td>${p.drumline||"—"}</td>
@@ -1529,6 +1526,27 @@ function renderDealsTable() {
     }
   });
 }
+
+// Jump from a map pin's "View more" to the matching row in Deal View
+function gotoDeal(siteId) {
+  const navBtn = document.querySelector('.nav-btn[data-view="deals"]');
+  if (navBtn) navBtn.click();
+  dealTypeFilter = "all";
+  document.querySelectorAll(".deal-chip").forEach(c => c.classList.toggle("active", c.dataset.dealType === "all"));
+  dealSearchQ = "";
+  const s = document.getElementById("deals-search"); if (s) s.value = "";
+  renderDealsTable();
+  requestAnimationFrame(() => {
+    const sel = (window.CSS && CSS.escape) ? CSS.escape(String(siteId)) : String(siteId);
+    const row = document.querySelector(`#deals-tbody tr[data-id="${sel}"]`);
+    if (row) {
+      document.querySelectorAll("#deals-tbody tr.row-highlight").forEach(r => r.classList.remove("row-highlight"));
+      row.classList.add("row-highlight");
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  });
+}
+window.gotoDeal = gotoDeal;
 
 // Sort on header click
 document.querySelectorAll("#deals-table th").forEach(th => {
@@ -1789,12 +1807,18 @@ async function loadData() {
       if (!p.lat || !p.lng) return;
       const color = colorForType(p.deal_type);
       const marker = L.marker([p.lat, p.lng], { icon: makeIcon(color) });
+      const _addr = [p.street || p.full_address, p.city, p.state].filter(Boolean).join(", ") || "—";
+      const _moreBtn = (p.deal_type && p.deal_type.trim())
+        ? `<button class="popup-more" onclick='gotoDeal(${JSON.stringify(p.site_id)})'>View more &rarr;</button>`
+        : "";
       marker.bindPopup(`
         <div class="popup-title">${p.store_name||"Unnamed"}</div>
-        <div class="popup-row">Address &nbsp;<span>${p.full_address||"—"}</span></div>
+        <div class="popup-row">Address &nbsp;<span>${_addr}</span></div>
         <div class="popup-row">Deal Type &nbsp;<span>${p.deal_type||"—"}</span></div>
         <div class="popup-row">Lease Exp. &nbsp;<span>${p.drumline||"—"}</span></div>
-        <div class="popup-row">Deal Notes &nbsp;<span>${p.deal_notes||"—"}</span></div>
+        <div class="popup-row">Size &nbsp;<span>${p.sqft||"—"}</span></div>
+        <div class="popup-row">Base Rent &nbsp;<span>${p.base_rent||"—"}</span></div>
+        ${_moreBtn}
       `);
       marker.on("click", () => {
         document.querySelectorAll(".prop-card").forEach(c => c.classList.remove("active"));
