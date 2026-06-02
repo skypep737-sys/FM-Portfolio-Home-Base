@@ -361,6 +361,7 @@
     .prop-card:hover  { background: var(--card-hover); }
     .prop-card.active { background: var(--card-active); border-left-color: var(--sa-red); }
     .prop-name  { font-size: .85rem; font-weight: 500; }
+    .prop-id    { color: var(--sa-red); font-weight: 700; }
     .prop-meta  { font-size: .72rem; color: var(--muted); margin-top: 2px; }
     .prop-badge {
       display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px;
@@ -906,13 +907,12 @@
       <table id="deals-table">
         <thead>
           <tr>
+            <th data-col="site_id">Site ID <span class="sort-arrow">↕</span></th>
             <th data-col="store_name">Store Name <span class="sort-arrow">↕</span></th>
-            <th data-col="street">Address <span class="sort-arrow">↕</span></th>
             <th data-col="deal_type">Deal Type <span class="sort-arrow">↕</span></th>
             <th data-col="deal_status">Deal Status <span class="sort-arrow">↕</span></th>
-            <th data-col="drumline">Lease Exp. <span class="sort-arrow">↕</span></th>
-            <th data-col="gross_sales_rank">End of Control <span class="sort-arrow">↕</span></th>
             <th data-col="deal_notes">Latest Notes <span class="sort-arrow">↕</span></th>
+            <th data-col="drumline">Lease Expiration <span class="sort-arrow">↕</span></th>
           </tr>
         </thead>
         <tbody id="deals-tbody"></tbody>
@@ -1261,8 +1261,9 @@ function makeIcon(color) {
 let allProperties = [], activeType = "all", markerMap = {};
 
 function badge(type) {
+  if (!type || !String(type).trim()) return "";
   const c = colorForType(type);
-  return `<span class="prop-badge" style="background:${c}22;color:${c};border:1px solid ${c}44">${type||"—"}</span>`;
+  return `<span class="prop-badge" style="background:${c}22;color:${c};border:1px solid ${c}44">${type}</span>`;
 }
 
 function renderList(props) {
@@ -1271,10 +1272,10 @@ function renderList(props) {
   props.forEach(p => {
     const card = document.createElement("div");
     card.className = "prop-card"; card.dataset.id = p.site_id;
+    const _addr = [p.street || p.full_address, p.city, p.state].filter(Boolean).join(", ") || "—";
     card.innerHTML = `
-      <div class="prop-name">${p.store_name||"Unnamed"}</div>
-      <div class="prop-meta">${p.full_address||""}</div>
-      <div class="prop-meta">EOC: ${p.gross_sales_rank||"—"}</div>
+      <div class="prop-name">${p.site_id ? `<span class="prop-id">${p.site_id}</span> · ` : ""}${p.store_name||"Unnamed"}</div>
+      <div class="prop-meta">${_addr}</div>
       ${badge(p.deal_type)}`;
     card.addEventListener("click", () => selectProperty(p.site_id));
     list.appendChild(card);
@@ -1498,20 +1499,19 @@ function renderDealsTable() {
 
   const tbody = document.getElementById("deals-tbody");
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="no-deals">No active deals found</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="no-deals">No active deals found</td></tr>`;
     return;
   }
 
   tbody.innerHTML = rows.map(p => {
     const color = colorForType(p.deal_type);
     return `<tr data-id="${p.site_id}">
+      <td>${p.site_id||"—"}</td>
       <td><strong>${p.store_name||"—"}</strong></td>
-      <td>${[p.street||p.full_address, p.city, p.state].filter(Boolean).join(", ")||"—"}</td>
       <td><span class="deal-badge" style="background:${color}22;color:${color};border:1px solid ${color}44">${p.deal_type||"—"}</span></td>
       <td><span class="status-badge">${p.deal_status||"—"}</span></td>
-      <td>${p.drumline||"—"}</td>
-      <td>${p.gross_sales_rank||"—"}</td>
       <td class="notes-cell" title="${(p.deal_notes||"").replace(/"/g,"&quot;")}">${p.deal_notes||"—"}</td>
+      <td>${p.drumline||"—"}</td>
     </tr>`;
   }).join("");
 
@@ -1766,6 +1766,7 @@ async function loadSurveys() {
         `, { maxWidth: 280 });
 
         marker.on("click", () => {
+          showSidebarPage("portfolio");
           document.querySelectorAll(".survey-card").forEach(c => c.classList.remove("active"));
           const card = document.querySelector(`.survey-card[data-sheet="${sheetName}"][data-id="${s.survey_order}"]`);
           if (card) { card.classList.add("active"); card.scrollIntoView({ block:"nearest", behavior:"smooth" }); }
@@ -1811,18 +1812,26 @@ async function loadData() {
       const _moreBtn = (p.deal_type && p.deal_type.trim())
         ? `<button class="popup-more" onclick='gotoDeal(${JSON.stringify(p.site_id)})'>View more &rarr;</button>`
         : "";
+      const _optRow = (label, val) =>
+        (val != null && String(val).trim()) ? `<div class="popup-row">${label} &nbsp;<span>${val}</span></div>` : "";
+      const _sqft = (p.sqft != null && String(p.sqft).trim())
+        ? (isNaN(parseFloat(p.sqft)) ? p.sqft : Math.round(parseFloat(p.sqft)).toLocaleString() + " SF") : "";
+      const _rent = (p.base_rent != null && String(p.base_rent).trim())
+        ? (isNaN(parseFloat(p.base_rent)) ? p.base_rent : "$" + parseFloat(p.base_rent).toFixed(2) + "/SF") : "";
       marker.bindPopup(`
         <div class="popup-title">${p.store_name||"Unnamed"}</div>
         <div class="popup-row">Address &nbsp;<span>${_addr}</span></div>
-        <div class="popup-row">Deal Type &nbsp;<span>${p.deal_type||"—"}</span></div>
+        ${_optRow("Deal Type", p.deal_type)}
         <div class="popup-row">Lease Exp. &nbsp;<span>${p.drumline||"—"}</span></div>
-        <div class="popup-row">Size &nbsp;<span>${p.sqft||"—"}</span></div>
-        <div class="popup-row">Base Rent &nbsp;<span>${p.base_rent||"—"}</span></div>
+        ${_optRow("SQFT", _sqft)}
+        ${_optRow("Base Rent", _rent)}
         ${_moreBtn}
       `);
       marker.on("click", () => {
+        showSidebarPage("portfolio");
+        const sel = (window.CSS && CSS.escape) ? CSS.escape(String(p.site_id)) : String(p.site_id);
         document.querySelectorAll(".prop-card").forEach(c => c.classList.remove("active"));
-        const card = document.querySelector(`.prop-card[data-id="${p.site_id}"]`);
+        const card = document.querySelector(`.prop-card[data-id="${sel}"]`);
         if (card) { card.classList.add("active"); card.scrollIntoView({ block:"nearest", behavior:"smooth" }); }
       });
       markerLayer.addLayer(marker);
