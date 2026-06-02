@@ -1,1 +1,26 @@
-{}
+{
+  "123 water st|naperville|il|": [
+    41.7710985,
+    -88.1503005
+  ],
+  "47 e chicago ave|naperville|il|": [
+    41.7723632,
+    -88.1413764
+  ],
+  "22 e chicago ave|naperville|il|": [
+    41.7789326,
+    -88.1103652
+  ],
+  "6 w jefferson ave|naperville|il|": [
+    41.7727771,
+    -88.1481209
+  ],
+  "221 s washington st|naperville|il|": [
+    41.7723167,
+    -88.1481972
+  ],
+  "15 w jefferson ave|naperville|il|": [
+    41.7731785,
+    -88.1483817
+  ]
+}
