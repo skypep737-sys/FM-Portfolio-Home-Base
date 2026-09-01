@@ -1,22 +1,5 @@
 [
   {
-    "site_id": "280.0",
-    "street": "114 East Wing Street",
-    "city": "Arlington Heights",
-    "state": "IL",
-    "store_name": "Arlington",
-    "deal_type": "Renewal",
-    "deal_status": "Legal Negotiations",
-    "deal_notes": "Skyler Peppo - LL sent renewal draft 8.6 \nLL requesting financials for 25 & 26",
-    "drumline": "2026-12-31",
-    "gross_sales_rank": "2026-12-31",
-    "sqft": "1080.0",
-    "base_rent": "20.72",
-    "photo_link": "https://rstatic.locations.fanniemay.com/locations/2242374_39102_FM_Store280_ArlingtonHeights_front.jpg",
-    "lat": 42.0838172,
-    "lng": -87.9802439
-  },
-  {
     "site_id": "382.0",
     "street": "Mallard Crossing 933 Meacham Road",
     "city": "Elk Grove Village",
